@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hedera Transaction List Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        .input-section input {
+            width: 300px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .input-section button {
+            padding: 12px 20px;
+            background-color: #8259ef;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .input-section button:hover {
+            background-color: #7148d9;
+        }
+        .input-section button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .quick-buttons {
+            margin: 10px 0;
+        }
+        .quick-buttons button {
+            margin-right: 10px;
+            padding: 6px 12px;
+            background: none;
+            border: 1px solid #8259ef;
+            color: #8259ef;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .quick-buttons button:hover {
+            background-color: #8259ef;
+            color: white;
+        }
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #c62828;
+        }
+        .success {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+            padding: 12px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #2e7d32;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .tx-id {
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+        .result-success {
+            color: green;
+            font-weight: bold;
+        }
+        .result-fail {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Hedera Transaction List</h1>
+          <div class="input-section">
+            <input type="text" id="accountId" value="0.0.6090816" placeholder="e.g., 0.0.123456789">
+            <button onclick="fetchTransactions()" id="fetchBtn">FETCH LAST 10</button>
+        </div>
+        
+        <div class="quick-buttons">
+            <button onclick="setAccount('0.0.2')">Treasury (0.0.2)</button>
+            <button onclick="setAccount('0.0.6090816')">Test Account</button>
+        </div>
+        
+        <div id="status"></div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const MIRROR_NODE_BASE_URL = 'https://testnet.mirrornode.hedera.com/api/v1';
+        
+        function setAccount(accountId) {
+            document.getElementById('accountId').value = accountId;
+        }
+        
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = type;
+            statusDiv.innerHTML = message;
+        }
+        
+        function showLoading() {
+            document.getElementById('fetchBtn').disabled = true;
+            document.getElementById('fetchBtn').textContent = 'Loading...';
+            showStatus('Fetching transactions...', 'loading');
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        function hideLoading() {
+            document.getElementById('fetchBtn').disabled = false;
+            document.getElementById('fetchBtn').textContent = 'FETCH LAST 10';
+        }
+        
+        function formatTimestamp(timestamp) {
+            const [seconds] = timestamp.split('.');
+            const date = new Date(parseInt(seconds) * 1000);
+            return date.toLocaleString();
+        }
+        
+        function tinybarsToHbar(tinybars) {
+            return (tinybars / 100_000_000).toFixed(8);
+        }
+        
+        function displayTransactions(transactions) {
+            if (!transactions || transactions.length === 0) {
+                showStatus('No transactions found for this account.', 'error');
+                return;
+            }
+            
+            showStatus(`Found ${transactions.length} transactions`, 'success');
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Type</th>
+                            <th>Fee (tinybars)</th>
+                            <th>Fee (HBAR)</th>
+                            <th>Result</th>
+                            <th>Transaction ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            transactions.forEach(tx => {
+                const resultClass = tx.result === 'SUCCESS' ? 'result-success' : 'result-fail';
+                html += `
+                    <tr>
+                        <td>${formatTimestamp(tx.consensus_timestamp)}</td>
+                        <td>${tx.name || 'UNKNOWN'}</td>
+                        <td>${tx.charged_tx_fee?.toLocaleString() || 'N/A'}</td>
+                        <td>${tx.charged_tx_fee ? tinybarsToHbar(tx.charged_tx_fee) : 'N/A'}</td>
+                        <td class="${resultClass}">${tx.result}</td>
+                        <td class="tx-id">${tx.transaction_id}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('results').innerHTML = html;
+        }
+        
+        async function fetchTransactions() {
+            const accountId = document.getElementById('accountId').value.trim();
+            
+            if (!accountId) {
+                showStatus('Please enter a valid account ID', 'error');
+                return;
+            }
+            
+            // Validate account ID format
+            if (!/^0\.0\.\d+$/.test(accountId)) {
+                showStatus('Invalid account ID format. Expected format: 0.0.xxxxx', 'error');
+                return;
+            }
+            
+            showLoading();
+              try {
+                // Use the correct endpoint format
+                const url = `${MIRROR_NODE_BASE_URL}/transactions?account.id=${accountId}&limit=10&order=desc`;
+                console.log('Fetching from:', url);
+                
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error(`Account ${accountId} not found or has no transactions`);
+                    }
+                    throw new Error(`Failed to fetch transactions: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('API Response:', data);
+                
+                displayTransactions(data.transactions);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Load transactions for default account on page load
+        window.addEventListener('load', fetchTransactions);
+    </script>
+</body>
+</html>
