@@ -1,15 +1,50 @@
 import { AccountId } from "@hashgraph/sdk";
-import { Button, TextField, Typography, Paper } from "@mui/material";
+import { Button, TextField, Typography, Paper, CircularProgress, Box } from "@mui/material";
 import { Stack } from "@mui/system";
 import { useWalletInterface } from "../services/wallets/useWalletInterface";
 import SendIcon from '@mui/icons-material/Send';
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import TxList from "../components/TxList";
+import TotalFeeCard from "../components/TotalFeeCard";
+import { fetchExchangeRate } from "../services/mirrorNodeClient";
 
 export default function Home() {
   const { walletInterface } = useWalletInterface();
   const [toAccountId, setToAccountId] = useState("");
   const [amount, setAmount] = useState(1);
+  const [totalTinybar, setTotalTinybar] = useState(0);
+  const [usdPerTinybar, setUsdPerTinybar] = useState(0);
+  const [exchangeRateLoading, setExchangeRateLoading] = useState(true);
+
+  // Fetch exchange rate on component mount
+  useEffect(() => {
+    const getExchangeRate = async () => {
+      try {
+        setExchangeRateLoading(true);
+        const rateData = await fetchExchangeRate();
+        // Calculate USD per tinybar correctly:
+        // 1. Get USD per HBAR: cent_equivalent / 100 / hbar_equivalent
+        // 2. Get USD per tinybar: (USD per HBAR) / 100_000_000
+        const usdPerHbar = rateData.current_rate.cent_equivalent / 100 / rateData.current_rate.hbar_equivalent;
+        const usdPerTinybar = usdPerHbar / 100_000_000;
+        setUsdPerTinybar(usdPerTinybar);
+        console.log('Exchange rate calculated:', { usdPerHbar, usdPerTinybar });
+      } catch (error) {
+        console.error('Failed to fetch exchange rate:', error);
+        // Fallback to a reasonable default (approximately $0.05 per HBAR)
+        setUsdPerTinybar(0.05 / 100_000_000);
+      } finally {
+        setExchangeRateLoading(false);
+      }
+    };
+
+    getExchangeRate();
+  }, []);
+
+  // Callback to handle total fee changes from TxList
+  const handleTotalFeeChange = useCallback((newTotalTinybar: number) => {
+    setTotalTinybar(newTotalTinybar);
+  }, []);
 
   return (
     <Stack alignItems="center" spacing={4} sx={{ width: '100%', px: 2 }}>
@@ -86,8 +121,26 @@ export default function Home() {
         </Paper>
       )}
       
+      {/* Show loading indicator if exchange rate is still loading */}
+      {exchangeRateLoading && (
+        <Box display="flex" alignItems="center" gap={2}>
+          <CircularProgress size={24} sx={{ color: 'white' }} />
+          <Typography color="white">Loading exchange rate...</Typography>
+        </Box>
+      )}
+      
+      {/* Total Fee Card - show only when not loading and we have data */}
+      {!exchangeRateLoading && totalTinybar > 0 && (
+        <TotalFeeCard 
+          totalTinybar={totalTinybar} 
+          usdPerTinybar={usdPerTinybar} 
+        />
+      )}
+      
+      {/* TODO: Add latency KPIs here */}
+      
       {/* Transaction List Component */}
-      <TxList />
+      <TxList onTotalFeeChange={handleTotalFeeChange} />
     </Stack>
   )
 }

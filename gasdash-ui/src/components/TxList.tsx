@@ -22,7 +22,11 @@ import {
   HederaTransaction 
 } from '../services/mirrorNodeClient';
 
-export default function TxList() {
+interface TxListProps {
+  onTotalFeeChange?: (totalTinybar: number) => void;
+}
+
+export default function TxList({ onTotalFeeChange }: TxListProps) {
   // Use account ID from environment variables or fallback to the one from .env
   const defaultAccountId = process.env.REACT_APP_OPERATOR_ID || '0.0.6090816';
   const [accountId, setAccountId] = useState(defaultAccountId);
@@ -49,9 +53,18 @@ export default function TxList() {
     try {
       console.log('Fetching transactions for account:', accountId);
       const response = await fetchAccountTransactions(accountId, 10);
-      console.log('Received response:', response);
-        if (response.transactions && Array.isArray(response.transactions)) {
+      console.log('Received response:', response);      if (response.transactions && Array.isArray(response.transactions)) {
         setTransactions(response.transactions);
+        
+        // Calculate total fee and notify parent component
+        const totalTinybar = response.transactions.reduce((sum, tx) => {
+          return sum + (tx.charged_tx_fee || 0);
+        }, 0);
+        
+        if (onTotalFeeChange) {
+          onTotalFeeChange(totalTinybar);
+        }
+        
         if (response.transactions.length === 0) {
           setError(`No transactions found for account ${accountId}. This could mean:
           • The account is new or has no transaction history
@@ -66,7 +79,7 @@ export default function TxList() {
       setError(err instanceof Error ? err.message : 'Failed to fetch transactions');    } finally {
       setLoading(false);
     }
-  }, [accountId]); // Dependencies for useCallback
+  }, [accountId, onTotalFeeChange]); // Dependencies for useCallback
   return (
     <Box sx={{ mt: 4, width: '100%', maxWidth: '1200px' }}>
       <Typography variant="h4" color="white" gutterBottom sx={{ fontWeight: 800, letterSpacing: 1, textShadow: '0 2px 8px rgba(0,0,0,0.25)' }}>

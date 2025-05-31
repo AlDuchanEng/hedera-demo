@@ -33,6 +33,20 @@ export interface MirrorNodeTransactionResponse {
   };
 }
 
+export interface ExchangeRateResponse {
+  current_rate: {
+    cent_equivalent: number;
+    expiration_time: string;
+    hbar_equivalent: number;
+  };
+  next_rate: {
+    cent_equivalent: number;
+    expiration_time: string;
+    hbar_equivalent: number;
+  };
+  timestamp: string;
+}
+
 /**
  * Fetch transactions for a specific Hedera account
  * Endpoint: /api/v1/accounts/{id}/transactions
@@ -100,4 +114,33 @@ export function formatTimestamp(timestamp: string): string {
  */
 export function tinybarsToHbar(tinybars: number): number {
   return tinybars / 100_000_000;
+}
+
+/**
+ * Fetch current exchange rate from Mirror Node
+ * Endpoint: /api/v1/network/exchangerate
+ * @returns Promise containing exchange rate data
+ */
+export async function fetchExchangeRate(): Promise<ExchangeRateResponse> {
+  const url = `${MIRROR_NODE_BASE_URL}/network/exchangerate`;
+  
+  console.log('Fetching exchange rate from:', url);
+  
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch exchange rate: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    console.log('Exchange rate response:', data);
+    
+    return data;
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error('Network error: Unable to connect to Hedera Mirror Node. Please check your internet connection.');
+    }
+    throw error;
+  }
 }
