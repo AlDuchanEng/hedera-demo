@@ -4,7 +4,6 @@ import NavBar from './components/Navbar';
 import { Box, ThemeProvider } from '@mui/material';
 import { AllWalletsProvider } from './services/wallets/AllWalletsProvider';
 import AppRouter from './AppRouter';
-import colorBackground from './assets/colors.png';
 import { theme } from './theme';
 import "./App.css";
 
@@ -18,11 +17,8 @@ function App() {
             display: 'flex',
             flexDirection: 'column',
             minHeight: '100vh',
-            backgroundColor: '#222222',
-            backgroundImage: `url(${colorBackground})`,
-            backgroundSize: 'cover',
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center'
+            backgroundColor: '#23272f', // Changed to a simple dark color
+            // Removed backgroundImage and related properties
           }}
         >
           <header>
@@ -31,6 +27,13 @@ function App() {
           <Box
             flex={1}
             p={3}
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              minHeight: 'calc(100vh - 140px)', // Account for header and footer
+              overflow: 'auto'
+            }}
           >
             <AppRouter />
           </Box>

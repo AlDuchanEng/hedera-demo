@@ -1,10 +1,10 @@
-import { AccountId, ContractId, TokenId } from "@hashgraph/sdk";
-import { Button, TextField, Typography } from "@mui/material";
+import { AccountId } from "@hashgraph/sdk";
+import { Button, TextField, Typography, Paper } from "@mui/material";
 import { Stack } from "@mui/system";
-import { ContractFunctionParameterBuilder } from "../services/wallets/contractFunctionParameterBuilder";
 import { useWalletInterface } from "../services/wallets/useWalletInterface";
 import SendIcon from '@mui/icons-material/Send';
 import { useState } from "react";
+import TxList from "../components/TxList";
 
 export default function Home() {
   const { walletInterface } = useWalletInterface();
@@ -12,21 +12,38 @@ export default function Home() {
   const [amount, setAmount] = useState(1);
 
   return (
-    <Stack alignItems="center" spacing={4}>
+    <Stack alignItems="center" spacing={4} sx={{ width: '100%', px: 2 }}>
       <Typography
-        variant="h4"
+        variant="h3"
         color="white"
+        textAlign="center"
+        sx={{
+          fontWeight: 900,
+          textShadow: '0 2px 8px rgba(0,0,0,0.25)',
+          letterSpacing: 1.5,
+          mb: 2
+        }}
       >
-        Let's buidl a dApp on Hedera
+        Hedera Transaction Explorer
       </Typography>
+      
       {walletInterface !== null && (
-        <>
+        <Paper sx={{ 
+          p: 3, 
+          backgroundColor: 'rgba(255, 255, 255, 0.1)', 
+          backdropFilter: 'blur(10px)',
+          borderRadius: 2,
+          maxWidth: '800px',
+          width: '100%'
+        }}>
           <Stack
-            direction='row'
+            direction={{ xs: 'column', sm: 'row' }}
             gap={2}
             alignItems='center'
+            justifyContent='center'
+            flexWrap='wrap'
           >
-            <Typography>
+            <Typography color="white">
               Transfer
             </Typography>
             <TextField
@@ -35,28 +52,42 @@ export default function Home() {
               value={amount}
               onChange={(e) => setAmount(parseInt(e.target.value))}
               sx={{
-                maxWidth: '100px'
-              }} />
-            <Typography>
-              HBAR
-              to
+                maxWidth: '100px',
+                backgroundColor: 'white',
+                borderRadius: 1
+              }} 
+            />
+            <Typography color="white">
+              HBAR to
             </Typography>
             <TextField
               value={toAccountId}
               onChange={(e) => setToAccountId(e.target.value)}
               label='account id or evm address'
+              sx={{
+                minWidth: '200px',
+                backgroundColor: 'white',
+                borderRadius: 1
+              }}
             />
             <Button
               variant='contained'
               onClick={async () => {
-                const txId = await walletInterface.transferHBAR(AccountId.fromString(toAccountId), amount);
+                await walletInterface.transferHBAR(AccountId.fromString(toAccountId), amount);
+              }}
+              sx={{ 
+                height: '56px',
+                minWidth: '56px'
               }}
             >
               <SendIcon />
             </Button>
           </Stack>
-        </>
+        </Paper>
       )}
+      
+      {/* Transaction List Component */}
+      <TxList />
     </Stack>
   )
 }
